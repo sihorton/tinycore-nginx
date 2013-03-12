@@ -1,0 +1,119 @@
+#!/bin/sh
+#
+######################################################
+# Build script for TinyCore 4.x                      #
+#                                                    #
+# See .info for details                              #
+#                                                    #
+# October 3, 2011                                    #
+######################################################
+
+######################################################
+# Configure extension creation parameters            #
+######################################################
+
+SRCNAM=nginx-1.2.6.tar.gz
+WRKDIR=nginx-1.2.6
+EXTNAM=nginx
+TMPDIR=/tmp/nginx
+
+######################################################
+# Prepare extension creation                         #
+######################################################
+
+# Remove dirs and files left from previous creation
+
+rm -r -f $WRKDIR
+
+rm -r -f $TMPDIR
+rm -r -f $TMPDIR-doc
+
+# Crete temporary directory
+
+mkdir -p $TMPDIR
+
+######################################################
+# Compile extension                                  #
+######################################################
+
+# Export variables needed for compilation
+
+export CFLAGS="-mtune=generic -Os -pipe"
+export CXXFLAGS="-mtune=generic -Os -pipe -fno-exceptions -fno-rtti"
+export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:/usr/lib/pkgconfig
+
+# Unpack source in current directory
+
+tar -xf $SRCNAM
+
+# Configure it
+
+cd $WRKDIR
+./configure --prefix=/usr/local --with-http_ssl_module --conf-path=/usr/local/etc --error-log-path=/var/log/nginx --http-log-path=/var/log/nginx
+
+# Compile
+
+make
+
+# Install in base temp dir
+
+make install DESTDIR=$TMPDIR
+
+# Adjust directory access rigths
+
+find $TMPDIR/ -type d | xargs chmod -v 755;
+
+# Strip executables
+
+find $TMPDIR | xargs file | grep ELF | cut -f 1 -d : | xargs strip --strip-unneeded
+
+# Move files to doc extension
+
+mkdir -p $TMPDIR-doc/usr/local/share/doc/nginx
+mv $TMPDIR/usr/local/html/* $TMPDIR-doc/usr/local/share/doc/nginx
+
+mkdir -p $TMPDIR/usr/local/share/doc/nginx
+cp  LICENSE $TMPDIR/usr/local/share/doc/nginx
+
+# Delete compilation work directory
+
+cd ..
+rm -r -f $WRKDIR
+
+###################################################
+# Create base extension in temp dir               #
+###################################################
+
+cd $TMPDIR
+cd ..
+mksquashfs $TMPDIR $EXTNAM.tcz
+cd $TMPDIR
+find usr -not -type d > $EXTNAM.tcz.list
+mv ../$EXTNAM.tcz .
+
+# Create md5 file
+
+md5sum $EXTNAM.tcz > $EXTNAM.tcz.md5.txt
+
+# Cleanup temp directory
+
+rm -r -f usr
+
+###################################################
+# Create doc extension in temp dir                #
+###################################################
+
+cd $TMPDIR-doc
+cd ..
+mksquashfs $TMPDIR-doc $EXTNAM-doc.tcz
+cd $TMPDIR-doc
+find usr -not -type d > $EXTNAM-doc.tcz.list
+mv ../$EXTNAM-doc.tcz .
+
+# Create md5 file
+
+md5sum $EXTNAM-doc.tcz > $EXTNAM-doc.tcz.md5.txt
+
+# Cleanup temp directory
+
+rm -r -f usr

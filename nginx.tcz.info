@@ -1,0 +1,12 @@
+Title:          nginx.tcz (TESTING)
+Description:    High-performance HTTP server
+Version:        1.2.6
+Author:         Igor Sysoev
+Original-site:  http://nginx.net
+Copying-policy: See /usr/local/share/doc/nginx/LICENSE
+Size:		236K
+Extension_by:   bmarkus,sihorton
+Tags:	    High-performance HTTP server
+Comments:       Compiled without any 3rd party modules
+Change-log:     2013-03-12 v1.2.6
+Current:        2013-03-12 v1.2.6

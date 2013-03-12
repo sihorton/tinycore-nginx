@@ -1,0 +1,110 @@
+#!/bin/sh
+. /usr/local/lib/tcztools/aliases
+. /usr/local/lib/tcztools/die
+. /usr/local/lib/tcztools/config
+
+#this is a modified submit script so email is not actually sent.
+
+usage() {
+[ "$@" ] && error "$@"
+say "\
+Submit tcz extensions created with tcz-pack to the Tiny Core team.
+v1.0 | Cosmin Apreutesei | tcztools.googlecode.com | MIT License
+
+Usage: $@ [-y|--yes] [-q|--quiet] [--debug] <name1> ...
+
+"
+exit 1
+}
+
+while [ $# -gt 0 ]; do
+case "$1" in
+--yes | -y) YES=$1 ;;
+--quiet | -q) QUIET=$1 ;;
+--debug) DEBUG=$1 ;;
+--help) usage ;;
+-*) usage "Unknown option $1" ;;
+*) break ;;
+esac
+shift
+done
+[ "$1" ] && names="$*" || usage
+
+#tmp=/tmp/tcztools
+tmp=/tmp
+tmp2="/tmp/$1"
+
+pack() {
+name="$1"
+local dst
+dst=release/$name.submit
+say "dest=$dst\n";
+say "src=$tmp2/$name.tar.gz\n"
+say -n "Packing $name.tcz..."
+must rm -rf $dst
+must mkdir -p $dst
+must ln -s "$PWD"/$name.tcz.info $dst
+must ln -s $tmp2/$name.tcz.list $dst
+must ln -s $tmp2/$name.tcz $dst
+must ln -s $tmp2/$name.tcz.md5.txt $dst
+[ ! -f $name.tcz.dep ] || must ln -s "$PWD"/$name.tcz.dep $dst
+(echo "$tmp2/$name.tar.gz $dst/";must tar zcfh "$tmp2/$name.tar.gz" "$dst/") || die "tar failed"
+echo -e "tinycore\ntinycore\n" | must bcrypt -r "$tmp2/$name.tar.gz" 2>/dev/null || die "bcrypt failed" say "OK"
+}
+
+for name in $names; do
+pack $name || die "packing $name.tcz failed"
+done
+
+contents() {
+for name in $names; do
+echo -e "$(du -h $tmp/$name.tar.gz.bfe | cut -f1)\t$name.tar.gz.bfe"
+ls -1 $tmp/$name.submit | while read line; do echo -e "\t\t$line"; done
+done
+}
+
+tmpfile="release/email.txt"
+subject="[tcz-submit] $names"
+
+echo "\
+To:$submit_email
+Subject:$subject
+Hi,
+
+Just packed some new extensions.
+Here's what they're about:
+
+$(contents)
+
+Please upload them to the repo.
+
+Thanks,
+$author
+$author_email
+" > "$tmpfile"
+
+if [ "$edit_email_before_sending" == "no" ]; then
+say "An email will be sent to $submit_email with the message:"
+say "Subject: $subject"
+say "$(cat $tmpfile)"
+say "----"
+say "TIP: To edit the message before sending, add edit_email_before_sending=yes in $CONF"
+hold
+else
+editor "$tmpfile"
+say "An email will be sent to $submit_email with the message you just edited."
+hold
+fi
+
+
+for name in $names; do
+echo -a "$tmp2/$name.tar.gz.bfe"
+cp "$tmp2/$name.tar.gz.bfe" release/$name.tar.gz.bfe
+done
+
+
+#say -n "Emailing to $submit_email..."
+#cat "$tmpfile" | must mutt $(attachments) -s "$subject" $submit_email -c $author_email || die "mutt failed"
+#run rm "$tmpfile"
+#say "Done"
+
