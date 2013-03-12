@@ -20,6 +20,7 @@ Re-building
 ===========
 Download the source code
 Edit variables in nginx.build64 to contain new source code version
+
     ./nginx.build64
     ./submit nginx
     ./submit nginx-doc
